@@ -46,8 +46,11 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
     MAX_RESETS = 2
     for _ in range(MAX_RESETS):
         obs, infos = par_env.reset()
+
         assert isinstance(obs, dict)
+        assert isinstance(infos, dict)
         assert set(obs.keys()) == (set(par_env.agents))
+        assert set(infos.keys()) == (set(par_env.agents))
         terminated = {agent: False for agent in par_env.agents}
         truncated = {agent: False for agent in par_env.agents}
         live_agents = set(par_env.agents[:])
@@ -74,14 +77,13 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
             assert isinstance(truncated, dict)
             assert isinstance(info, dict)
 
-            agents_set = set(live_agents)
             keys = "observation reward terminated truncated info".split()
             vals = [obs, rew, terminated, truncated, info]
             for k, v in zip(keys, vals):
                 key_set = set(v.keys())
-                if key_set == agents_set:
+                if key_set == live_agents:
                     continue
-                if len(key_set) < len(agents_set):
+                if len(key_set) < len(live_agents):
                     warnings.warn(f"Live agent was not given {k}")
                 else:
                     warnings.warn(f"Agent was given {k} but was dead last turn")
@@ -127,3 +129,4 @@ def parallel_api_test(par_env: ParallelEnv, num_cycles=1000):
 
             if len(live_agents) == 0:
                 break
+    print("Passed Parallel API test")

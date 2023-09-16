@@ -1,3 +1,4 @@
+# pyright: reportGeneralTypeIssues=false
 import copy
 import warnings
 from collections import defaultdict
@@ -122,6 +123,15 @@ class aec_to_parallel_wrapper(ParallelEnv[AgentID, ObsType, ActionType]):
             pass
 
         self.metadata = aec_env.metadata
+
+        try:
+            self.render_mode = (
+                self.aec_env.render_mode  # pyright: ignore[reportGeneralTypeIssues]
+            )
+        except AttributeError:
+            warnings.warn(
+                f"The base environment `{aec_env}` does not have a `render_mode` defined."
+            )
 
         # Not every environment has the .state_space attribute implemented
         try:
@@ -304,6 +314,19 @@ class parallel_to_aec_wrapper(AECEnv[AgentID, ObsType, Optional[ActionType]]):
         self.terminations = {agent: False for agent in self.agents}
         self.truncations = {agent: False for agent in self.agents}
         self.rewards = {agent: 0 for agent in self.agents}
+
+        # Every environment needs to return infos that contain self.agents as their keys
+        if not self.infos:
+            warnings.warn(
+                "The `infos` dictionary returned by `env.reset` was empty. OverwritingAgent IDs will be used as keys"
+            )
+            self.infos = {agent: {} for agent in self.agents}
+        elif set(self.infos.keys()) != set(self.agents):
+            self.infos = {agent: {self.infos.copy()} for agent in self.agents}
+            warnings.warn(
+                f"The `infos` dictionary returned by `env.reset()` is not valid: must contain keys for each agent defined in self.agents: {self.agents}. Overwriting with current info duplicated for each agent: {self.infos}"
+            )
+
         self._cumulative_rewards = {agent: 0 for agent in self.agents}
         self.new_agents = []
         self.new_values = {}
@@ -405,6 +428,15 @@ class turn_based_aec_to_parallel_wrapper(
             )
         except AttributeError:
             pass
+
+        try:
+            self.render_mode = (
+                self.aec_env.render_mode  # pyright: ignore[reportGeneralTypeIssues]
+            )
+        except AttributeError:
+            warnings.warn(
+                f"The base environment `{aec_env}` does not have a `render_mode` defined."
+            )
 
     @property
     def unwrapped(self):
